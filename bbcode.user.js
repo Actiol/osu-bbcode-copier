@@ -5,21 +5,19 @@
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
 // @description 11/7/2024, 12:47:18 PM
-// @downloadURL https://github.com/Actiol/osu-bbcode-copier/raw/main/bbcode.user.js
-// @updateURL   https://github.com/Actiol/osu-bbcode-copier/raw/main/bbcode.user.js
+// @downloadURL https://github.com/Actiol/osuBBCodeCopier/raw/main/bbcode.user.js
+// @updateURL   https://github.com/Actiol/osuBBCodeCopier/raw/main/bbcode.user.js
 // ==/UserScript==
 
 
-/**
- * Heroicons, used for CreateIcon
- * MIT licensed, https://github.com/tailwindlabs/heroicons/blob/master/LICENSE
- */
-const copyClipboard = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" /></svg>`
-const eye = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`
+const copyClipboard =
+    `<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" fill="none" stroke="currentColor">
+        <rect class="cls-1" x="1.5" y="6.5" width="14" height="14" rx="3" ry="3"/>
+        <path class="cls-1" d="M15.5,15.5h2c1.66,0,3-1.34,3-3V4.5c0-1.66-1.34-3-3-3h-8c-1.66,0-3,1.34-3,3v2"/>
+    </svg>`
 
 var icons = Object.freeze({
-    copyClipboard: copyClipboard,
-    eye: eye
+    copyClipboard: copyClipboard
 });
 
 var isAppended = false
@@ -98,10 +96,10 @@ function injectIcon(header, bbcodeBody){
         const interval = setInterval(() => {
             const targetElement = document.querySelector(selector);
             if (targetElement) {
-                clearInterval(interval); 
+                clearInterval(interval);
                 callback(targetElement);
             }
-        }, 100); 
+        }, 100);
     }
 
     waitForElement(
@@ -117,19 +115,19 @@ function injectIcon(header, bbcodeBody){
 
             const iconWrapper = document.createElement('span');
             iconWrapper.innerHTML = icons["copyClipboard"];
-            iconWrapper.style.width = '14px';
-            iconWrapper.style.height = '14px';
+            iconWrapper.style.width = '16px';
+            iconWrapper.style.height = '16px';
             iconWrapper.style.marginLeft = '4px';
-            iconWrapper.style.verticalAlign = '-2px';
+            iconWrapper.style.verticalAlign = '-4px';
             iconWrapper.style.display = 'inline-block';
             iconWrapper.title = 'Copy as BBCode';
             iconWrapper.classList.add('copy-bbcode-icon');
 
             const svg = iconWrapper.querySelector('svg');
             if (svg) {
-                svg.style.color = textColor;
                 svg.style.cursor = 'pointer';
-                svg.style.strokeWidth = '3';
+                svg.style.strokeWidth = '2.5';
+                svg.style.color = textColor;
             } else {
                 console.error('SVG not found inside the wrapper.');
             }
@@ -141,11 +139,41 @@ function injectIcon(header, bbcodeBody){
                 const bbcodeContent = document.querySelector(bbcodeBody).innerHTML.trim();
                 copyToClipboard(bbcodeContent);
 
-                console.log('Icon clicked - copying action triggered!');
+                const checkmark = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                checkmark.setAttribute('class', 'cls-1');
+                checkmark.setAttribute('points', '5 14.27 7.75 17 12 10');
+                checkmark.setAttribute('stroke-linejoin', 'round');
+                checkmark.style.strokeLinecap = 'round';
+                checkmark.style.stroke = 'currentColor';
+                checkmark.style.strokeWidth = "2.5";
+                checkmark.style.fill = 'none';
+                checkmark.style.strokeDasharray = '50';
+                checkmark.style.strokeDashoffset = '50';
+                checkmark.style.animation = 'draw-in 2s ease-out forwards';
+
+                svg.appendChild(checkmark);
+
+
+                setTimeout(() => {
+                    checkmark.style.animation = 'draw-out 2s ease-out forwards';
+                }, 350);
+
+                setTimeout(() => {
+                    svg.removeChild(checkmark);
+                }, 1500);
+
+                console.log('');
+            });
+
+            iconWrapper.addEventListener('mouseover', () => {
+                svg.style.animation = 'raise 3s cubic-bezier(0,.8,.55,1.0) forwards';
+                svg.style.filter = 'drop-shadow(0px 1px 3px rgba(255,255,255, 0.4))';
             });
 
             iconWrapper.addEventListener('mouseleave', () => {
                 iconWrapper.title = 'Copy as BBCode';
+                svg.style.animation = 'descend 10s ease-out forwards';
+                svg.style.filter = '';
             });
 
             targetElement.appendChild(iconWrapper);
@@ -153,6 +181,42 @@ function injectIcon(header, bbcodeBody){
         }
     );
 }
+
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes draw-in {
+        from {
+            stroke-dashoffset: 50; /* Start fully hidden */
+        }
+        to {
+            stroke-dashoffset: 0; /* Fully revealed */
+        }
+    }
+    @keyframes draw-out {
+        from {
+            stroke-dashoffset: 0; /* Fully visible */
+        }
+        to {
+            stroke-dashoffset: -50; /* Fully hidden again */
+        }
+    }
+    @keyframes raise {
+        from {
+            filter: drop-shadow(0px 1px 6px rgba(255,255,255, 0))
+        }
+        to {
+            transform: translateY(-1px);
+            filter: drop-shadow(0px 1px 3px rgba(255,255,255, 0.5));
+        }
+    }
+    @keyframes descend {
+        to {
+            transform: translateY(0px);
+            filter: none;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 
 function insertBeatmapset(){
