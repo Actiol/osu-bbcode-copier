@@ -26,7 +26,7 @@ var isAppended = false
 function htmlToBBCode(html) {
     const rules = [
         { pattern: /<br\s*\/?>/gi, replacement: '\n' }, // new lines
-        { pattern: /<a href=['"]https:\/\/score.kirino.sh\/clan\/(.*?)nowrap;">(.*?)<\/a>/gi, replacement: '\n' }, // remove clan tags
+        { pattern: /<a href=['"]https:\/\/score.kirino.sh\/clan\/(.*?)nowrap;">(.*?)<\/a>/gi, replacement: '' }, // remove clan tags
         { pattern: /<strong>(.*?)<\/strong>/gi, replacement: '[b]$1[/b]' }, // bold
         { pattern: /<em>(.*?)<\/em>/gi, replacement: '[i]$1[/i]' }, // italic
         { pattern: /<u>(.*?)<\/u>/gi, replacement: '[u]$1[/u]' }, // underline
