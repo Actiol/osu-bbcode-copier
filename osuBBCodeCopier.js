@@ -5,8 +5,8 @@
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
 // @description 11/7/2024, 12:47:18 PM
-// @downloadURL
-// @updateURL
+// @downloadURL https://raw.githubusercontent.com/Actiol/osuBBCodeCopier/refs/heads/main/osuBBCodeCopier.js
+// @updateURL   https://raw.githubusercontent.com/Actiol/osuBBCodeCopier/refs/heads/main/osuBBCodeCopier.js
 // ==/UserScript==
 
 
