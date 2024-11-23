@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.1
+// @version     1.0
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
 // @description 11/7/2024, 12:47:18 PM
-// @downloadURL https://github.com/Actiol/osuBBCodeCopier/raw/main/bbcode.user.js
-// @updateURL   https://github.com/Actiol/osuBBCodeCopier/raw/main/bbcode.user.js
+// @downloadURL https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
+// @updateURL   https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
 // ==/UserScript==
 
 
