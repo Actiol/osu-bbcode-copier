@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.2
+// @version     1.21
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -32,7 +32,7 @@ function htmlToBBCode(html) {
         { pattern: /<u>(.*?)<\/u>/gi, replacement: '[u]$1[/u]' }, // underline
         { pattern: /<del>(.*?)<\/del>/gi, replacement: '[strike]$1[/strike]' }, // strikeout
         { pattern: /<span style="color:(.*?);">(.*?)<\/span>/gi, replacement: '[color=$1]$2[/color]' }, // color
-        { pattern: /<span style="font-size:(.*?);">(.*?)<\/span>/gi, replacement: '[size=$1]$2[/size]' }, // text size
+        { pattern: /<span style="font-size:(.*?)%;">(.*?)<\/span>/gi, replacement: '[size=$1]$2[/size]' }, // text size
         { pattern: /<span class="spoiler">(.*?)<\/span>/gi, replacement: '[spoiler]$1[/spoiler]' }, // spoiler
         {
             pattern: /<div class="js-spoilerbox bbcode-spoilerbox"><a class="js-spoilerbox__link bbcode-spoilerbox__link" href="#"><span class="bbcode-spoilerbox__link-icon"><\/span>SPOILER<\/a><div class="js-spoilerbox__body bbcode-spoilerbox__body">(.*?)<\/div><\/div>/gi,
