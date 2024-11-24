@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.3
+// @version     1.31
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -218,7 +218,7 @@ function htmlToBBCode(html) {
         doc.body.innerHTML = decodeHTML(doc.body.innerHTML);
     } while (doc.body.innerHTML !== previousHTML); // Stop when no more changes occur
 
-    return doc.body.innerHTML;
+    return decodeHTML(doc.body.innerHTML);
 }
 
 
