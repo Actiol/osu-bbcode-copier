@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.21
+// @version     1.3
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -21,66 +21,204 @@ var icons = Object.freeze({
     copyClipboard: copyClipboard
 });
 
-var isAppended = false
+
+// if theres an easier way to get the colour in hex pls lemme know
+function rgbToHex(rgb) {
+    const result = rgb.match(/^rgba?\((\d+), (\d+), (\d+)(?:, (\d+\.?\d*))?\)$/);
+    if (!result) return null;
+    
+    const r = parseInt(result[1]);
+    const g = parseInt(result[2]);
+    const b = parseInt(result[3]);
+    
+    return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase()}`;
+}
 
 function htmlToBBCode(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
     const rules = [
-        { pattern: /<br\s*\/?>/gi, replacement: '\n' }, // new lines
-        { pattern: /<a href=['"]https:\/\/score.kirino.sh\/clan\/(.*?)nowrap;">(.*?)<\/a>/gi, replacement: '' }, // remove clan tags
-        { pattern: /<strong>(.*?)<\/strong>/gi, replacement: '[b]$1[/b]' }, // bold
-        { pattern: /<em>(.*?)<\/em>/gi, replacement: '[i]$1[/i]' }, // italic
-        { pattern: /<u>(.*?)<\/u>/gi, replacement: '[u]$1[/u]' }, // underline
-        { pattern: /<del>(.*?)<\/del>/gi, replacement: '[strike]$1[/strike]' }, // strikeout
-        { pattern: /<span style="color:(.*?);">(.*?)<\/span>/gi, replacement: '[color=$1]$2[/color]' }, // color
-        { pattern: /<span style="font-size:(.*?)%;">(.*?)<\/span>/gi, replacement: '[size=$1]$2[/size]' }, // text size
-        { pattern: /<span class="spoiler">(.*?)<\/span>/gi, replacement: '[spoiler]$1[/spoiler]' }, // spoiler
         {
-            pattern: /<div class="js-spoilerbox bbcode-spoilerbox"><a class="js-spoilerbox__link bbcode-spoilerbox__link" href="#"><span class="bbcode-spoilerbox__link-icon"><\/span>SPOILER<\/a><div class="js-spoilerbox__body bbcode-spoilerbox__body">(.*?)<\/div><\/div>/gi,
-            replacement: '[spoilerbox]$1[/spoilerbox]\n' // spoiler box
+            selector: `span.proportional-container.js-gallery, 
+                    span.proportional-container__height,
+                    span.bbcode-spoilerbox__link-icon,
+                    span:not([class]):not([id]):not([style]):not([data-])`,
+            action: el => el.replaceWith(el.innerHTML),                                                     // garbage removal
+        },
+        { selector: 'div.open_grepper_editor', action: el => el.remove() },                                 // remove grapper div
+        { selector: 'a[href^="https://score.kirino.sh/clan/"]', action: el => el.remove() },                // remove clan tags
+        { selector: 'br', action: el => el.replaceWith('\n') },                                             // new lines
+        { selector: 'strong', action: el => el.replaceWith(`[b]${el.innerHTML}[/b]`) },                     // bold
+        { selector: 'em', action: el => el.replaceWith(`[i]${el.innerHTML}[/i]`) },                         // italic
+        { selector: 'u', action: el => el.replaceWith(`[u]${el.innerHTML}[/u]`) },                          // underlined
+        { selector: 'del', action: el => el.replaceWith(`[strike]${el.innerHTML}[/strike]`) },              // strikeout 
+        {
+            selector: 'span[style*="color"]',
+            action: el => {
+                const color = rgbToHex(el.style.color);
+                el.replaceWith(`[color=${color}]${el.innerHTML}[/color]`);                                  // colour
+            },
         },
         {
-            pattern: /<div class="js-spoilerbox bbcode-spoilerbox"><a class="js-spoilerbox__link bbcode-spoilerbox__link" href="#"><span class="bbcode-spoilerbox__link-icon"><\/span>(.*?)<\/a><div class="js-spoilerbox__body bbcode-spoilerbox__body">(.*?)<\/div><\/div>/gi,
-            replacement: '[box=$1]$2[/box]\n' // box
+            selector: 'span[style*="font-size"]',
+            action: el => {
+                const size = el.style.fontSize.slice(0,-1);
+                el.replaceWith(`[size=${size}]${el.innerHTML}[/size]`);                                     // size
+            },
         },
-        { pattern: /<blockquote><h4>(.*?) wrote:<\/h4>(.*?)<\/blockquote>/gi, replacement: '[quote="$1"]$2[/quote]\n' }, // quote
-        { pattern: /<code>(.*?)<\/code>/gi, replacement: '[c]$1[/c]' }, // inline code
-        { pattern: /<pre>(.*?)<\/pre>/gi, replacement: '[code]$1[/code]\n' }, // code block
-        { pattern: /<center>/gi, replacement: '[centre]' }, // center
-        { pattern: /<\/center>/gi, replacement: '[/centre]' }, // closing center
-        { pattern: /<a rel=['"]nofollow['"] href=['"](.*?)['"](.*?)>(.*?)<\/a>/gi, replacement: '[url=$1]$3[/url]' }, // url
-        { pattern: /<a class="user-name js-usercard" data-user-id="(.*?)"(.*?)>(.*?)<\/a>/gi, replacement: '[profile=$1]$3[/profile]' }, // profile
-        { pattern: /<ol class="unordered">(.*?)<\/ol>/gi, replacement: '[list]\n$1[/list]\n' }, // dotted list
-        { pattern: /<ol>(.*?)<\/ol>/gi, replacement: '[list=meow]\n$1[/list]\n' }, // numbered list
-        { pattern: /<li>(.*?)<\/li>/gi, replacement: '[*]$1\n' }, // list points
-        { pattern: /<a rel="nofollow" href="mailto:(.*?)">(.*?)<\/a>/gi, replacement: '[email=$1]$2[/email]' }, // email
-        { pattern: /<img src=['"](.*?)['"](.*?)>/gi, replacement: '[img]$1[/img]' }, // image
         {
-            pattern: /<span class="proportional-container js-gallery['"](.*?)data-src=['"](.*?)['"]><span class="proportional-container__height" style=(.*?)><img class="proportional-container__content" src=['"](.*?)['"](.*?)><\/span><\/span>/gi,
-            replacement: '[img]$2[/img]' // also image i think but idk
+            selector: 'span.spoiler',
+            action: el => el.replaceWith(`[spoiler]${el.innerHTML}[/spoiler]`),                             // spoiler
         },
-        { pattern: /<div class="imagemap"><img class="imagemap__image"(.*?)src=['"](.*?)['"](.*?)>(.*?)<\/div>/gi, replacement: '[imagemap]\n$2\n$4[/imagemap]\n' }, // imagemap outline
-        { pattern: /<a class="imagemap__link" href=['"](.*?)['"] style="left:(.*?)%;top:(.*?)%;width:(.*?)%;height:(.*?)%;" title=['"](.*?)['"]><\/a>/gi, replacement: '$2 $3 $4 $5 $1 $6\n' }, // imagemap link
-        { pattern: /<iframe class="u-embed-wide u-embed-wide--bbcode" src="https:\/\/www.youtube.com\/embed\/(.*?)\?rel=0"(.*?)><\/iframe>/gi, replacement: '[youtube]$1[/youtube]' }, // youtube iframe
-        { pattern: /<button type="button" class="audio-player__button audio-player__button--play js-audio--play"><span class="fa-fw play-button"><\/span><\/button>(.*?)<div class="audio-player__timestamp audio-player__timestamp--total"><\/div>(.*?)<\/div>/gi, replacement: '' }, // remove audio garbage
-        { pattern: /<div class="audio-player js-audio--player" data-audio-url=['"](.*?)['"](.*?)>(.*?)<\/div>/gi, replacement: '[audio]$1[/audio]' }, // audio
-        { pattern: /<h2>(.*?)<\/h2>/gi, replacement: '[heading]$1[/heading]\n' }, // heading
-        { pattern: /<div class="well">(.*?)<\/div>/gi, replacement: '[notice]$1[/notice]' } // notice
+        {
+            selector: 'div.js-spoilerbox.bbcode-spoilerbox > a',
+            action: el => {
+                const boxName = el.innerHTML;
+                const body = el
+                    .closest('.js-spoilerbox')
+                    .querySelector('.js-spoilerbox__body');
+                const text = body ? body.innerHTML : '';
+
+                if (boxName == 'SPOILER') {
+                    el.closest('.js-spoilerbox').replaceWith(
+                    `[spoilerbox]${text}[/spoilerbox]\n`                                                    // spoilerbox
+                    );                                   
+                } else {
+                    el.closest('.js-spoilerbox').replaceWith(
+                    `[box=${boxName}]\n${text}\n[/box]\n`                                                   // box
+                    );
+                }
+            },
+        },
+        {
+            selector: 'blockquote',
+            action: el => {
+                const author = el
+                    .querySelector('h4')
+                    .textContent.replace(' wrote:', '');
+                const [_, quoteText] = el.innerHTML.split('</h4>'); // someone make this cleaner pls
+                el.replaceWith(`[quote="${author}"]\n${quoteText}\n[/quote]\n`);                            // quote
+            },
+        },
+        {
+            selector: 'code',
+            action: el => el.replaceWith(`[c]${el.innerHTML}[/c]`),                                         // code
+        },
+        {
+            selector: 'pre',
+            action: el => el.replaceWith(`[code]\n${el.innerHTML}\n[/code]\n`),                             // codebloack
+        },
+        { selector: 'center', action: el => el.replaceWith(`[centre]${el.innerHTML}[/centre]`) },           // center
+        {
+            selector: 'a[rel="nofollow"]',
+            action: el => {
+                const url = el.getAttribute('href');
+                
+
+                if (url.startsWith('mailto:')) {
+                    const email = url.replace('mailto:', '');
+                    el.replaceWith(`[email=${email}]${el.textContent}[/email]`);                            // email
+                } else {
+                    el.replaceWith(`[url=${url}]${el.innerHTML}[/url]`);                                    // url
+                }
+
+            },
+        },
+        {
+            selector: 'a[data-user-id]',
+            action: el => {
+                const userId = el.getAttribute('data-user-id');
+                el.replaceWith(`[profile=${userId}]${el.innerHTML}[/profile]`);                             // profile
+            },
+        },
+        {
+            selector: 'ol.unordered',
+            action: el => el.replaceWith(`[list]\n${el.innerHTML}[/list]\n`),                               // dotted list
+        },
+        {
+            selector: 'ol',
+            action: el => el.replaceWith(`[list=meow]\n${el.innerHTML}[/list]\n`),                          // numbered list
+        },
+        {
+            selector: 'li',
+            action: el => el.replaceWith(`[*]${el.innerHTML}\n`),                                           // list points
+        },
+        {
+            selector: 'a[href^="mailto:"]',
+            action: el => {
+                const email = el.getAttribute('href').replace('mailto:', '');
+                el.replaceWith(`[email=${email}]${el.textContent}[/email]`);                                // email
+            },
+        },
+        {
+            selector: 'img:not([class=imagemap__image])',
+            action: el => el.replaceWith(`[img]${el.getAttribute('src')}[/img]`),                           // image
+        },
+        {
+            selector: '.imagemap', 
+            action: el => {
+                // image
+                const image = `${el.querySelector('img.imagemap__image').getAttribute('src')}`;
+                
+                // image links
+                var formattedlinks = [];
+                const links = Array.from(el.querySelectorAll('a.imagemap__link'));
+                links.forEach(link => {
+                    const position = Array.from(
+                        link.getAttribute('style').matchAll(/([a-zA-Z-]+):([0-9.]+)%/g)
+                    ).map(match => parseFloat(match[2])); 
+                    const linkHref = link.getAttribute('href');
+                    const title = link.getAttribute('title');
+                    
+                    formattedlinks.push(`${position.join(' ')} ${linkHref} ${title}\n`); 
+                });
+                el.replaceWith(`[imagemap]\n${image}\n${formattedlinks.join('')}[/imagemap]\n`)             // imagemaps
+            }
+        },
+        {
+            selector: 'iframe[src*="youtube.com/embed"]',
+            action: el => {
+            const youtubeId = new URL(el.src).pathname.split('/')[2];
+            el.replaceWith(`[youtube]${youtubeId}[/youtube]`);                                              // youtube
+            },
+        },
+        { selector: 'div.audio-player__button', action: el => el.remove() },                                // audio player (button removal)
+        {
+            selector: 'div.audio-player',
+            action: el => {
+            const audioUrl = el.getAttribute('data-audio-url');
+            el.replaceWith(`[audio]${audioUrl}[/audio]`);                                                   // audio player
+            },
+        },
+        {
+            selector: 'h2',
+            action: el => el.replaceWith(`[heading]${el.textContent}[/heading]\n`),                         // heading
+        },
+        {
+            selector: 'div.well',
+            action: el => el.replaceWith(`[notice]\n${el.textContent}\n[/notice]`),                         // notice
+        },
     ];
-
-    for (const rule of rules) {
-        html = html.replace(rule.pattern, rule.replacement);
+    
+    function decodeHTML(html) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = html;
+        return textarea.value;
     }
 
-    // remove remaining HTML tags (there are some /span or /div left sometimes somehow)
-    html = html.replace(/<.*?>/g, '');
+    let previousHTML;
+    do {
+        previousHTML = doc.body.innerHTML;
+        rules.forEach(({ selector, action }) => {
+            const elements = Array.from(doc.querySelectorAll(selector));
+            elements.forEach(action);
+        });
+    
+        doc.body.innerHTML = decodeHTML(doc.body.innerHTML);
+    } while (doc.body.innerHTML !== previousHTML); // Stop when no more changes occur
 
-    // i dont this can ever happen but it cant hurt (leftover from my py script)
-    const outline = '<div class="bbcode bbcode--profile-page">';
-    if (html.includes(outline)) {
-        html = html.replace(outline, '').slice(0, -6);
-    }
-
-    return html;
+    return doc.body.innerHTML;
 }
 
 
