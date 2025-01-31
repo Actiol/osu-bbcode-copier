@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.31
+// @version     1.4
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -10,6 +10,7 @@
 // @homepageURL https://github.com/Actiol/osu-bbcode-copier
 // ==/UserScript==
 
+const debug = false;
 
 const copyClipboard =
     `<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" fill="none" stroke="currentColor">
@@ -26,21 +27,21 @@ var icons = Object.freeze({
 function rgbToHex(rgb) {
     const result = rgb.match(/^rgba?\((\d+), (\d+), (\d+)(?:, (\d+\.?\d*))?\)$/);
     if (!result) return null;
-    
+
     const r = parseInt(result[1]);
     const g = parseInt(result[2]);
     const b = parseInt(result[3]);
-    
+
     return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase()}`;
 }
 
 function htmlToBBCode(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
+
     const rules = [
         {
-            selector: `span.proportional-container.js-gallery, 
+            selector: `span.proportional-container.js-gallery,
                     span.proportional-container__height,
                     span.bbcode-spoilerbox__link-icon,
                     span:not([class]):not([id]):not([style]):not([data-])`,
@@ -52,7 +53,7 @@ function htmlToBBCode(html) {
         { selector: 'strong', action: el => el.replaceWith(`[b]${el.innerHTML}[/b]`) },                     // bold
         { selector: 'em', action: el => el.replaceWith(`[i]${el.innerHTML}[/i]`) },                         // italic
         { selector: 'u', action: el => el.replaceWith(`[u]${el.innerHTML}[/u]`) },                          // underlined
-        { selector: 'del', action: el => el.replaceWith(`[strike]${el.innerHTML}[/strike]`) },              // strikeout 
+        { selector: 'del', action: el => el.replaceWith(`[strike]${el.innerHTML}[/strike]`) },              // strikeout
         {
             selector: 'span[style*="color"]',
             action: el => {
@@ -83,7 +84,7 @@ function htmlToBBCode(html) {
                 if (boxName == 'SPOILER') {
                     el.closest('.js-spoilerbox').replaceWith(
                     `[spoilerbox]${text}[/spoilerbox]\n`                                                    // spoilerbox
-                    );                                   
+                    );
                 } else {
                     el.closest('.js-spoilerbox').replaceWith(
                     `[box=${boxName}]\n${text}\n[/box]\n`                                                   // box
@@ -114,7 +115,7 @@ function htmlToBBCode(html) {
             selector: 'a[rel="nofollow"]',
             action: el => {
                 const url = el.getAttribute('href');
-                
+
 
                 if (url.startsWith('mailto:')) {
                     const email = url.replace('mailto:', '');
@@ -156,22 +157,22 @@ function htmlToBBCode(html) {
             action: el => el.replaceWith(`[img]${el.getAttribute('src')}[/img]`),                           // image
         },
         {
-            selector: '.imagemap', 
+            selector: '.imagemap',
             action: el => {
                 // image
                 const image = `${el.querySelector('img.imagemap__image').getAttribute('src')}`;
-                
+
                 // image links
                 var formattedlinks = [];
                 const links = Array.from(el.querySelectorAll('a.imagemap__link'));
                 links.forEach(link => {
                     const position = Array.from(
                         link.getAttribute('style').matchAll(/([a-zA-Z-]+):([0-9.]+)%/g)
-                    ).map(match => parseFloat(match[2])); 
+                    ).map(match => parseFloat(match[2]));
                     const linkHref = link.getAttribute('href');
                     const title = link.getAttribute('title');
-                    
-                    formattedlinks.push(`${position.join(' ')} ${linkHref} ${title}\n`); 
+
+                    formattedlinks.push(`${position.join(' ')} ${linkHref} ${title}\n`);
                 });
                 el.replaceWith(`[imagemap]\n${image}\n${formattedlinks.join('')}[/imagemap]\n`)             // imagemaps
             }
@@ -200,7 +201,7 @@ function htmlToBBCode(html) {
             action: el => el.replaceWith(`[notice]\n${el.textContent}\n[/notice]`),                         // notice
         },
     ];
-    
+
     function decodeHTML(html) {
         const textarea = document.createElement('textarea');
         textarea.innerHTML = html;
@@ -214,7 +215,7 @@ function htmlToBBCode(html) {
             const elements = Array.from(doc.querySelectorAll(selector));
             elements.forEach(action);
         });
-    
+
         doc.body.innerHTML = decodeHTML(doc.body.innerHTML);
     } while (doc.body.innerHTML !== previousHTML); // Stop when no more changes occur
 
@@ -229,31 +230,40 @@ function copyToClipboard(html){
 }
 
 
-function injectIcon(header, bbcodeBody){
+function injectIcon(header, bbcodeBody, forum){
     'use strict';
 
     function waitForElement(selector, callback) {
         const interval = setInterval(() => {
-            const targetElement = document.querySelector(selector);
-            if (targetElement) {
+            const targetElements = document.querySelectorAll(selector);
+            if (targetElements.length > 0) {
                 clearInterval(interval);
-                callback(targetElement);
+                if (forum){
+                    targetElements.forEach(callback);
+                }
+                else {
+                    callback(targetElements[0]);
+                }
             }
         }, 100);
     }
-
     waitForElement(
         header,
         (targetElement) => {
             // abort if icon is already appended
             if (targetElement.querySelector('.copy-bbcode-icon')) {
-                console.log('Icon already added.');
+                if (debug) {console.log('Icon already added.');}
                 return;
             }
 
-            const textColor = getComputedStyle(targetElement).color;
+            if (debug) {
+                targetElement.style.outline = "2px solid red";
+            }
+
+            var textColor = getComputedStyle(targetElement).color;
 
             const iconWrapper = document.createElement('span');
+
             iconWrapper.innerHTML = icons["copyClipboard"];
             iconWrapper.style.width = '16px';
             iconWrapper.style.height = '16px';
@@ -262,6 +272,20 @@ function injectIcon(header, bbcodeBody){
             iconWrapper.style.display = 'inline-block';
             iconWrapper.title = 'Copy as BBCode';
             iconWrapper.classList.add('copy-bbcode-icon');
+
+            if (forum){
+                iconWrapper.style.width = '16px';
+                iconWrapper.style.height = '16px';
+                iconWrapper.style.marginLeft = '4px';
+                iconWrapper.style.position = 'relative';
+                iconWrapper.style.top = '4px';
+                iconWrapper.style.display = 'inline-block';
+
+                var colourElement = targetElement.querySelector('.forum-post__header-content-item .js-post-url .js-timeago');
+                if (colourElement){
+                    textColor = getComputedStyle(colourElement).color;
+                }
+            }
 
             const svg = iconWrapper.querySelector('svg');
             if (svg) {
@@ -272,11 +296,49 @@ function injectIcon(header, bbcodeBody){
                 console.error('SVG not found inside the wrapper.');
             }
 
+
+
             // this doesnt work perfectly bc osu hides tooltips afetr clicking
             iconWrapper.addEventListener('click', () => {
                 iconWrapper.title = 'Copied!';
 
-                const bbcodeContent = document.querySelector(bbcodeBody).innerHTML.trim();
+                const parentDiv = targetElement.closest('.forum-post__body') ||
+                                  targetElement.closest('.beatmapset-info__row') ||
+                                  targetElement.closest('.page-extra.page-extra--userpage');
+
+                const curbbcodeBody = parentDiv.querySelector(bbcodeBody);
+
+                function highlightBody(target, opacity) {
+                    const intervalId = setInterval(() => {
+                        target.style.outline = `2px solid rgba(255, 0, 0, ${opacity})`;
+                        var realopacity = opacity;
+                        if (realopacity > 1) {
+                            realopacity = 1;
+                        }
+
+                        var backOpactiy = 0.1 * realopacity;
+
+                        target.style.background = `rgba(255, 0, 0, ${backOpactiy})`;
+
+                        if (opacity <= 0) {
+                            clearInterval(intervalId);
+                        }
+
+                        opacity -= .01;
+                    }, 1);
+                };
+
+                if (debug) {
+                    highlightBody(curbbcodeBody, 2);
+                }
+
+                //var bbcodeBodies = document.querySelectorAll(bbcodeBody);
+
+                const bbcodeContent = curbbcodeBody.innerHTML.trim();
+
+
+                //const bbcodeContent = bbCodeBodies[targetElements.indexOf(targetElement)].innerHTML.trim();
+                //const bbcodeContent = document.querySelector(bbcodeBody).innerHTML.trim();
                 copyToClipboard(bbcodeContent);
 
                 const checkmark = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
@@ -302,7 +364,7 @@ function injectIcon(header, bbcodeBody){
                     svg.removeChild(checkmark);
                 }, 1500);
 
-                console.log('');
+                //console.log(''); ???
             });
 
             iconWrapper.addEventListener('mouseover', () => {
@@ -317,7 +379,7 @@ function injectIcon(header, bbcodeBody){
             });
 
             targetElement.appendChild(iconWrapper);
-            console.log('SVG icon added next to the Description header.');
+            if (debug) {console.log('SVG icon added next to the Description header.');}
         }
     );
 }
@@ -364,7 +426,7 @@ function insertBeatmapset(){
 
     var header = '.beatmapset-info__box .beatmapset-info__row.beatmapset-info__row--value-overflow .beatmapset-info__header';
     var body = '.bbcode.bbcode--normal-line-height';
-    injectIcon(header, body);
+    injectIcon(header, body, false);
 }
 
 function insertUsers(){
@@ -372,9 +434,16 @@ function insertUsers(){
 
     var header = '.js-sortable--page[data-page-id="me"] .page-extra.page-extra--userpage .u-relative h2.title.title--page-extra';
     var body ='.bbcode.bbcode--profile-page';
-    injectIcon(header, body);
+    injectIcon(header, body, false);
 }
 
+function insertForum(){
+    // forum post
+
+    var header = '.forum-post__content--header .forum-post__header-content';
+    var body ='.bbcode';
+    injectIcon(header, body, true);
+}
 
 const routes = [
     {
@@ -384,6 +453,10 @@ const routes = [
     {
             match: ["users"],
             render: () => insertUsers(),
+    },
+    {
+            match: ["topics"],
+            render: () => insertForum(),
     },
 ];
 
