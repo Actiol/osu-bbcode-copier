@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.4
+// @version     1.41
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -95,11 +95,18 @@ function htmlToBBCode(html) {
         {
             selector: 'blockquote',
             action: el => {
-                const author = el
-                    .querySelector('h4')
-                    .textContent.replace(' wrote:', '');
-                const [_, quoteText] = el.innerHTML.split('</h4>'); // someone make this cleaner pls
-                el.replaceWith(`[quote="${author}"]\n${quoteText}\n[/quote]\n`);                            // quote
+                if (el.innerHTML.includes('</h4>')) {                                                       // quote "NAME wrote:"
+                    const author = el
+                        .querySelector('h4')
+                        .textContent.replace(' wrote:', '');
+                    const [_, quoteText] = el.innerHTML.split('</h4>');                                     // someone make this cleaner pls
+                    el.replaceWith(`[quote="${author}"]\n${quoteText}\n[/quote]\n`);
+                }
+                else {                                                                                      // empty quote
+                    const quoteText = el.innerHTML;
+                    el.replaceWith(`[quote]\n${quoteText}\n[/quote]\n`);
+                }
+                                            // quote
             },
         },
         {
