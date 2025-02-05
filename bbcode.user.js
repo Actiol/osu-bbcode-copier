@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.50
+// @version     1.51
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -705,7 +705,7 @@ function insertForum(){
 
 const routes = [
     {
-            match: ["discussion", "discussions"],
+            match: ["discussion", "discussions", "modding"],
             render: () => insertDiscussion(),
     },
     {
