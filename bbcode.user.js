@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.51
+// @version     1.52
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -90,7 +90,7 @@ function htmlToMarkdown(html) {
             selector: 'a[rel="nofollow noreferrer"]',
             action: el => {
                 const url = el.getAttribute('href');
-                if (url.includes('https://osu.ppy.sh/beatmapsets/')) {
+                if (url.includes('https://osu.ppy.sh/beatmapsets/') || el.innerHTML === url) {
                     el.replaceWith(url);
                 } else {
                     el.replaceWith(`[${el.innerHTML}](${url})`);                                                // url
