@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.41
+// @version     1.50
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
-// @description Adds a button to me! sections and beatmap descriptions to copy those directly as BBCode
+// @description Adds a button to me! sections, beatmap descriptions and forum posts to copy those directly as BBCode as well as adding a copy button to beatmap comments and discussion posts to copy the text as osu's markdown
 // @downloadURL https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
 // @updateURL   https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
 // @homepageURL https://github.com/Actiol/osu-bbcode-copier
@@ -34,6 +34,136 @@ function rgbToHex(rgb) {
 
     return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase()}`;
 }
+
+
+
+function decodeHTML(html) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = html;
+    return textarea.value;
+}
+
+function htmlToMarkdown(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const rules = [
+        {
+            selector: `span.proportional-container.js-gallery,
+                    span.proportional-container__height,
+                    span.bbcode-spoilerbox__link-icon,
+                    span:not([class]):not([id]):not([style]):not([data-]),
+                    p,
+                    a[class="beatmap-discussion-timestamp-decoration"]`,
+            action: el => el.replaceWith(el.innerHTML),                                                     // garbage removal
+        },
+        { selector: 'div.open_grepper_editor', action: el => el.remove() },                                 // remove grapper div
+        { selector: 'a[href^="https://score.kirino.sh/clan/"]', action: el => el.remove() },                // remove clan tags
+        { selector: 'br', action: el => el.replaceWith('\n') },                                             // new lines
+        { selector: 'strong', action: el => el.replaceWith(`**${el.innerHTML}**`) },                        // bold
+        { selector: 'em', action: el => el.replaceWith(`*${el.innerHTML}*`) },                              // italic
+        { selector: 'del', action: el => el.replaceWith(`~~${el.innerHTML}~~`) },                           // strikeout
+        {
+            selector: 'blockquote',
+            action: el => {
+                const quoteText = el.innerHTML;
+            el.replaceWith(`> ${quoteText}\n`);                                            // quote
+            },
+        },
+        {
+            selector: 'code',
+            action: el => el.replaceWith(`\`${el.innerHTML}\``),                                         // code
+        },
+        {
+            selector: 'pre',
+            action: el => el.replaceWith(`\`\`\`\n${el.innerHTML}\n\`\`\`\n`),                             // codebloack
+        },
+        {
+            selector: ['a[class="beatmapset-discussion-image-link"]', 'img[class="osu-md__figure-image"]'],
+            action : el => {
+                const imgLink = decodeURIComponent(el.getAttribute('href')?.split('url?url=')[1] ?? el.getAttribute('src') ?? '');
+                const alt = el.lastChild?.getAttribute('alt') ?? el.getAttribute('alt') ?? '';
+                el.replaceWith(`![${alt}](${imgLink})`);
+            },
+        },
+        {
+            selector: 'a[rel="nofollow noreferrer"]',
+            action: el => {
+                const url = el.getAttribute('href');
+                if (url.includes('https://osu.ppy.sh/beatmapsets/')) {
+                    el.replaceWith(url);
+                } else {
+                    el.replaceWith(`[${el.innerHTML}](${url})`);                                                // url
+                }
+
+            },
+        },
+        {
+            selector: 'ul',
+            action: el => {
+                const listPoints = el.querySelectorAll('li');
+                var text = ''
+                listPoints.forEach((li) => {
+                    text += `- ${li.querySelector('div')?.textContent.trim()}\n`;
+                });
+                el.replaceWith(text);                                    // numbered list
+            },                                // dotted list
+        },
+        {
+            selector: 'ol',
+            action: el => {
+                const listPoints = el.querySelectorAll('li');
+                var text = ''
+                listPoints.forEach((li, i) => {
+                    text += `${i+1}. ${li.querySelector('div')?.textContent.trim()}\n`;
+                });
+                el.replaceWith(text);                                    // numbered list
+            },                          
+        },
+        {
+            selector: 'h1',
+            action: el => el.replaceWith(`# ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'h2',
+            action: el => el.replaceWith(`## ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'h3',
+            action: el => el.replaceWith(`### ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'h4',
+            action: el => el.replaceWith(`#### ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'h5',
+            action: el => el.replaceWith(`##### ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'h6',
+            action: el => el.replaceWith(`###### ${el.textContent}\n`),                         // heading
+        },
+        {
+            selector: 'hr',
+            action: el => el.replaceWith(`---`),                         // heading
+        },
+    ];
+
+    let previousHTML;
+    do {
+        previousHTML = doc.body.innerHTML;
+        rules.forEach(({ selector, action }) => {
+            const elements = Array.from(doc.querySelectorAll(selector));
+            elements.forEach(action);
+        });
+
+        doc.body.innerHTML = decodeHTML(doc.body.innerHTML);
+    } while (doc.body.innerHTML !== previousHTML); // Stop when no more changes occur
+
+    return decodeHTML(doc.body.innerHTML);
+}
+
 
 function htmlToBBCode(html) {
     const parser = new DOMParser();
@@ -209,12 +339,6 @@ function htmlToBBCode(html) {
         },
     ];
 
-    function decodeHTML(html) {
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = html;
-        return textarea.value;
-    }
-
     let previousHTML;
     do {
         previousHTML = doc.body.innerHTML;
@@ -230,10 +354,144 @@ function htmlToBBCode(html) {
 }
 
 
-function copyToClipboard(html){
+function copyToClipboard(html, bbool){
     const textArea = document.createElement('textarea');
-    bbcode = htmlToBBCode(html);
-    navigator.clipboard.writeText(bbcode);
+    if (bbool) {
+        clipboard = htmlToBBCode(html);
+    } else {
+        clipboard = htmlToMarkdown(html);
+    }
+    navigator.clipboard.writeText(clipboard);
+}
+
+function highlightBody(target, opacity) {
+    const intervalId = setInterval(() => {
+        target.style.outline = `2px solid rgba(255, 0, 0, ${opacity})`;
+        var realopacity = opacity;
+        if (realopacity > 1) {
+            realopacity = 1;
+        }
+
+        var backOpactiy = 0.1 * realopacity;
+
+        target.style.background = `rgba(255, 0, 0, ${backOpactiy})`;
+
+        if (opacity <= 0) {
+            clearInterval(intervalId);
+        }
+
+        opacity -= .01;
+    }, 1);
+}
+
+
+function injectComment(header, mdBody, discussion) {
+    'use strict';
+
+    function waitForElement(selector, callback) {
+        const interval = setInterval(() => {
+            const targetElements = document.querySelectorAll(selector);
+            // console.log(targetElements.length);
+            if (targetElements.length > 0) {
+                clearInterval(interval);
+                targetElements.forEach(callback);
+            }
+        }, 100);
+    }
+    waitForElement(header, (targetElement) => {
+        if (targetElement.querySelector('.comment__action--copymd') ||
+            targetElement.querySelector('.copy-markdown-button')) {
+          //if ([...targetElement.querySelectorAll('.comment__row-item')].some(item => item.textContent.trim().toLowerCase() === "copy")) {
+            if (debug) {console.log('Button already added.');}
+            return;
+        }
+
+        if (debug) {
+            targetElement.style.outline = "2px solid red";
+        }
+
+        const comment__row_item = document.createElement('div');
+        comment__row_item.setAttribute('class', "comment__row-item");
+
+        const comment__action = comment__row_item.appendChild(document.createElement('button'));
+        comment__action.setAttribute('type', 'button');
+        comment__action.setAttribute('class', 'comment__action comment__action--copymd');
+        comment__action.setAttribute('data-tooltip-hide-events', "mouseleave");
+        comment__action.setAttribute('data-tooltip-pin-position',"true");
+        comment__action.setAttribute('data-tooltip-position',"bottom center");
+        comment__action.setAttribute('data-orig-title',"click to copy to clipboard");
+        comment__action.setAttribute('aria-describedby',"qtip-1");
+
+        if (discussion) {
+            comment__action.setAttribute('class', "beatmap-discussion-post__action beatmap-discussion-post__action--button copy-markdown-button");
+            comment__action.setAttribute('data-hasqtip',"2");
+        }
+
+
+        comment__action.textContent = "copy";
+        comment__action.title = "click to copy to clipboard"
+
+    /*
+        const comment__button = comment__action.appendChild(document.createElement('button'));
+        comment__button.setAttribute('type', 'button');
+        comment__button.textContent = "copy";
+    */
+
+
+        comment__action.addEventListener('click', (event) => {
+
+            if (discussion) { event.stopPropagation(); }
+
+            const tooltip = comment__action.getAttribute('aria-describedby');
+            const tooltipElement = document.getElementById(tooltip);
+
+            const newText = 'copied to clipboard!';
+            tooltipElement.querySelector('.qtip-content').textContent = newText;
+            $(event.target).qtip('reposition');
+
+            const parentDiv = targetElement.closest('.comment__container') ||
+                              targetElement.closest('.beatmap-discussion-post__message-container');
+
+            const curmdbody = parentDiv.querySelector(mdBody);
+
+            if (debug) {
+                highlightBody(curmdbody, 2);
+            }
+
+            const mdContent = curmdbody.innerHTML.trim();
+
+
+            copyToClipboard(mdContent, false);
+
+        })
+
+        comment__action.addEventListener('mouseover', () => {
+            comment__action.style.textDecoration = "underline";
+        })
+
+        comment__action.addEventListener('mouseleave', () => {
+            comment__action.title = comment__action.getAttribute('data-orig-title');
+            comment__action.style.textDecoration = "";
+        })
+
+        var appendElement;
+        if (discussion) {
+            appendElement = comment__action;
+        } else {
+            appendElement = comment__row_item;
+        }
+
+        const lastChild = targetElement.lastElementChild;
+        if ((lastChild.className === "comment__row-item") || (lastChild.className === "beatmap-discussion-post__action beatmap-discussion-post__action--button")) {
+            targetElement.appendChild(appendElement);
+        } else {
+            targetElement.insertBefore(appendElement, lastChild);
+        }
+
+        if (debug) { console.log(`Appended copyButton to ${targetElement.className.split(' ')[targetElement.className.split(' ').length - 1]}.`); }
+
+
+    })
 }
 
 
@@ -315,26 +573,6 @@ function injectIcon(header, bbcodeBody, forum){
 
                 const curbbcodeBody = parentDiv.querySelector(bbcodeBody);
 
-                function highlightBody(target, opacity) {
-                    const intervalId = setInterval(() => {
-                        target.style.outline = `2px solid rgba(255, 0, 0, ${opacity})`;
-                        var realopacity = opacity;
-                        if (realopacity > 1) {
-                            realopacity = 1;
-                        }
-
-                        var backOpactiy = 0.1 * realopacity;
-
-                        target.style.background = `rgba(255, 0, 0, ${backOpactiy})`;
-
-                        if (opacity <= 0) {
-                            clearInterval(intervalId);
-                        }
-
-                        opacity -= .01;
-                    }, 1);
-                };
-
                 if (debug) {
                     highlightBody(curbbcodeBody, 2);
                 }
@@ -346,7 +584,7 @@ function injectIcon(header, bbcodeBody, forum){
 
                 //const bbcodeContent = bbCodeBodies[targetElements.indexOf(targetElement)].innerHTML.trim();
                 //const bbcodeContent = document.querySelector(bbcodeBody).innerHTML.trim();
-                copyToClipboard(bbcodeContent);
+                copyToClipboard(bbcodeContent, true);
 
                 const checkmark = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
                 checkmark.setAttribute('class', 'cls-1');
@@ -428,12 +666,25 @@ style.textContent = `
 document.head.appendChild(style);
 
 
+function insertDiscussion(){
+
+    // discussion page
+    var disheader = '.beatmap-discussion-post__actions-group';
+    var disbody = '.beatmap-discussion-post__message .osu-md.osu-md--discussions';
+    injectComment(disheader, disbody, true);
+}
+
 function insertBeatmapset(){
     // beatmap description
 
     var header = '.beatmapset-info__box .beatmapset-info__row.beatmapset-info__row--value-overflow .beatmapset-info__header';
     var body = '.bbcode.bbcode--normal-line-height';
     injectIcon(header, body, false);
+
+    // comment section
+    var comheader = '.comment__row.comment__row--footer';
+    var combody = '.comment__message .osu-md.osu-md--comment';
+    injectComment(comheader, combody, false);
 }
 
 function insertUsers(){
@@ -453,6 +704,10 @@ function insertForum(){
 }
 
 const routes = [
+    {
+            match: ["discussion", "discussions"],
+            render: () => insertDiscussion(),
+    },
     {
             match: ["beatmapsets"],
             render: () => insertBeatmapset(),
