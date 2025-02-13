@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.52
+// @version     1.53
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -67,16 +67,16 @@ function htmlToMarkdown(html) {
             selector: 'blockquote',
             action: el => {
                 const quoteText = el.innerHTML;
-            el.replaceWith(`> ${quoteText}\n`);                                            // quote
+            el.replaceWith(`> ${quoteText}\n`);                                                             // quote
             },
         },
         {
             selector: 'code',
-            action: el => el.replaceWith(`\`${el.innerHTML}\``),                                         // code
+            action: el => el.replaceWith(`\`${el.innerHTML}\``),                                            // code
         },
         {
             selector: 'pre',
-            action: el => el.replaceWith(`\`\`\`\n${el.innerHTML}\n\`\`\`\n`),                             // codebloack
+            action: el => el.replaceWith(`\`\`\`\n${el.innerHTML}\n\`\`\`\n`),                              // codebloack
         },
         {
             selector: ['a[class="beatmapset-discussion-image-link"]', 'img[class="osu-md__figure-image"]'],
@@ -93,7 +93,7 @@ function htmlToMarkdown(html) {
                 if (url.includes('https://osu.ppy.sh/beatmapsets/') || el.innerHTML === url) {
                     el.replaceWith(url);
                 } else {
-                    el.replaceWith(`[${el.innerHTML}](${url})`);                                                // url
+                    el.replaceWith(`[${el.innerHTML}](${url})`);                                            // url
                 }
 
             },
@@ -104,10 +104,10 @@ function htmlToMarkdown(html) {
                 const listPoints = el.querySelectorAll('li');
                 var text = ''
                 listPoints.forEach((li) => {
-                    text += `- ${li.querySelector('div')?.textContent.trim()}\n`;
+                    text += `- ${li.querySelector('div')?.textContent.trim() ?? ''}\n`;
                 });
-                el.replaceWith(text);                                    // numbered list
-            },                                // dotted list
+                el.replaceWith(text);                                                                       // dotted list
+            },
         },
         {
             selector: 'ol',
@@ -115,10 +115,10 @@ function htmlToMarkdown(html) {
                 const listPoints = el.querySelectorAll('li');
                 var text = ''
                 listPoints.forEach((li, i) => {
-                    text += `${i+1}. ${li.querySelector('div')?.textContent.trim()}\n`;
+                    text += `${i+1}. ${li.querySelector('div')?.textContent.trim() ?? ''}\n`;
                 });
-                el.replaceWith(text);                                    // numbered list
-            },                          
+                el.replaceWith(text);                                                                       // numbered list
+            },
         },
         {
             selector: 'h1',
@@ -146,7 +146,7 @@ function htmlToMarkdown(html) {
         },
         {
             selector: 'hr',
-            action: el => el.replaceWith(`---`),                         // heading
+            action: el => el.replaceWith(`---`),                                                          // line
         },
     ];
 
