@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.53
+// @version     1.60
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
-// @description Adds a button to me! sections, beatmap descriptions and forum posts to copy those directly as BBCode as well as adding a copy button to beatmap comments and discussion posts to copy the text as osu's markdown
+// @description Adds a button to me! sections, beatmap descriptions, forum posts and team infos to copy those directly as BBCode as well as adding a copy button to beatmap comments and discussion posts to copy the text as osu's markdown
 // @downloadURL https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
 // @updateURL   https://github.com/Actiol/osu-bbcode-copier/raw/refs/heads/main/bbcode.user.js
 // @homepageURL https://github.com/Actiol/osu-bbcode-copier
@@ -385,7 +385,7 @@ function highlightBody(target, opacity) {
 }
 
 
-function injectComment(header, mdBody, discussion) {
+function injectComment(header, mdBody, pageType) {
     'use strict';
 
     function waitForElement(selector, callback) {
@@ -422,7 +422,7 @@ function injectComment(header, mdBody, discussion) {
         comment__action.setAttribute('data-orig-title',"click to copy to clipboard");
         comment__action.setAttribute('aria-describedby',"qtip-1");
 
-        if (discussion) {
+        if (pageType === 'discussion') {
             comment__action.setAttribute('class', "beatmap-discussion-post__action beatmap-discussion-post__action--button copy-markdown-button");
             comment__action.setAttribute('data-hasqtip',"2");
         }
@@ -440,7 +440,7 @@ function injectComment(header, mdBody, discussion) {
 
         comment__action.addEventListener('click', (event) => {
 
-            if (discussion) { event.stopPropagation(); }
+            if (pageType === 'discussion') { event.stopPropagation(); }
 
             const tooltip = comment__action.getAttribute('aria-describedby');
             const tooltipElement = document.getElementById(tooltip);
@@ -475,7 +475,7 @@ function injectComment(header, mdBody, discussion) {
         })
 
         var appendElement;
-        if (discussion) {
+        if (pageType === 'discussion') {
             appendElement = comment__action;
         } else {
             appendElement = comment__row_item;
@@ -495,7 +495,7 @@ function injectComment(header, mdBody, discussion) {
 }
 
 
-function injectIcon(header, bbcodeBody, forum){
+function injectIcon(header, bbcodeBody, pageType){
     'use strict';
 
     function waitForElement(selector, callback) {
@@ -503,7 +503,7 @@ function injectIcon(header, bbcodeBody, forum){
             const targetElements = document.querySelectorAll(selector);
             if (targetElements.length > 0) {
                 clearInterval(interval);
-                if (forum){
+                if (pageType === 'forum'){
                     targetElements.forEach(callback);
                 }
                 else {
@@ -538,7 +538,7 @@ function injectIcon(header, bbcodeBody, forum){
             iconWrapper.title = 'Copy as BBCode';
             iconWrapper.classList.add('copy-bbcode-icon');
 
-            if (forum){
+            if (pageType === 'forum'){
                 iconWrapper.style.width = '16px';
                 iconWrapper.style.height = '16px';
                 iconWrapper.style.marginLeft = '4px';
@@ -550,6 +550,12 @@ function injectIcon(header, bbcodeBody, forum){
                 if (colourElement){
                     textColor = getComputedStyle(colourElement).color;
                 }
+            } else if (pageType === 'teams') {
+                let parentDiv = document.querySelector('.team-summary');
+                console.log(parentDiv.offsetWidth);
+                iconWrapper.style.position = 'absolute';
+                let marginLeft = parentDiv.offsetWidth - targetElement.offsetWidth - 72;
+                iconWrapper.style.marginLeft = `${marginLeft}px`;
             }
 
             const svg = iconWrapper.querySelector('svg');
@@ -569,8 +575,8 @@ function injectIcon(header, bbcodeBody, forum){
 
                 const parentDiv = targetElement.closest('.forum-post__body') ||
                                   targetElement.closest('.beatmapset-info__row') ||
-                                  targetElement.closest('.page-extra.page-extra--userpage');
-
+                                  targetElement.closest('.page-extra.page-extra--userpage') ||
+                                  targetElement.closest('.team-summary');
                 const curbbcodeBody = parentDiv.querySelector(bbcodeBody);
 
                 if (debug) {
@@ -671,7 +677,7 @@ function insertDiscussion(){
     // discussion page
     var disheader = '.beatmap-discussion-post__actions-group';
     var disbody = '.beatmap-discussion-post__message .osu-md.osu-md--discussions';
-    injectComment(disheader, disbody, true);
+    injectComment(disheader, disbody, 'discussion');
 }
 
 function insertBeatmapset(){
@@ -679,12 +685,20 @@ function insertBeatmapset(){
 
     var header = '.beatmapset-info__box .beatmapset-info__row.beatmapset-info__row--value-overflow .beatmapset-info__header';
     var body = '.bbcode.bbcode--normal-line-height';
-    injectIcon(header, body, false);
+    injectIcon(header, body, 'beatmapset');
 
     // comment section
     var comheader = '.comment__row.comment__row--footer';
     var combody = '.comment__message .osu-md.osu-md--comment';
-    injectComment(comheader, combody, false);
+    injectComment(comheader, combody, 'beatmapset');
+}
+
+function insertTeams(){
+    // team info
+
+    var header = '.title.title--page-extra-small.title--page-extra-small-top';
+    var body ='.bbcode';
+    injectIcon(header, body, 'teams');
 }
 
 function insertUsers(){
@@ -692,7 +706,7 @@ function insertUsers(){
 
     var header = '.js-sortable--page[data-page-id="me"] .page-extra.page-extra--userpage .u-relative h2.title.title--page-extra';
     var body ='.bbcode.bbcode--profile-page';
-    injectIcon(header, body, false);
+    injectIcon(header, body, 'userpage');
 }
 
 function insertForum(){
@@ -700,7 +714,7 @@ function insertForum(){
 
     var header = '.forum-post__content--header .forum-post__header-content';
     var body ='.bbcode';
-    injectIcon(header, body, true);
+    injectIcon(header, body, 'forum');
 }
 
 const routes = [
@@ -711,6 +725,10 @@ const routes = [
     {
             match: ["beatmapsets"],
             render: () => insertBeatmapset(),
+    },
+    {
+            match: ["teams"],
+            render: () => insertTeams(),
     },
     {
             match: ["users"],
