@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.60
+// @version     1.61
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -550,12 +550,6 @@ function injectIcon(header, bbcodeBody, pageType){
                 if (colourElement){
                     textColor = getComputedStyle(colourElement).color;
                 }
-            } else if (pageType === 'teams') {
-                let parentDiv = document.querySelector('.team-summary');
-                console.log(parentDiv.offsetWidth);
-                iconWrapper.style.position = 'absolute';
-                let marginLeft = parentDiv.offsetWidth - targetElement.offsetWidth - 72;
-                iconWrapper.style.marginLeft = `${marginLeft}px`;
             }
 
             const svg = iconWrapper.querySelector('svg');
@@ -696,7 +690,7 @@ function insertBeatmapset(){
 function insertTeams(){
     // team info
 
-    var header = '.title.title--page-extra-small.title--page-extra-small-top';
+    var header = '.page-extra.page-extra--userpage .title.title--page-extra';
     var body ='.bbcode';
     injectIcon(header, body, 'teams');
 }
