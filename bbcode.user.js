@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        osu! BBCode copier
-// @version     1.61
+// @version     1.62
 // @author      Actiol
 // @match       https://osu.ppy.sh/*
 // @grant       GM_registerMenuCommand
@@ -677,7 +677,7 @@ function insertDiscussion(){
 function insertBeatmapset(){
     // beatmap description
 
-    var header = '.beatmapset-info__box .beatmapset-info__row.beatmapset-info__row--value-overflow .beatmapset-info__header';
+    var header = '.beatmapset-info__header.beatmapset-info__header--sticky';
     var body = '.bbcode.bbcode--normal-line-height';
     injectIcon(header, body, 'beatmapset');
 
